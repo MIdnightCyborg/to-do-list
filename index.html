@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            /* Added margin at the bottom to prevent clipping */
+            margin-bottom: 60px;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        input[type="text"], select {
+            margin-bottom: 10px;
+            padding: 10px;
+            width: calc(100% - 22px);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            /* Added padding-top to make space between the list and the add-task button */
+            padding-top: 10px;
+        }
+        li {
+            background: #e0e0e0;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: fadeIn 0.5s forwards;
+            cursor: move;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #ff4c4c;
+            border: none;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 5px;
+            /* Added width and height to standardize button size */
+            width: 60px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover {
+            background: #ff1a1a;
+        }
+        #add-task {
+            background: #4CAF50;
+            border: none;
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            /* Same size adjustments for the add task button */
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #add-task:hover {
+            background: #45a049;
+        }
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+    
+</head>
+<body>
+    <div class="container">
+        <h1>To-Do List</h1>
+        <input type="text" id="search-task" placeholder="Search tasks">
+        <input type="text" id="new-task" placeholder="Enter a new task">
+        <select id="task-priority">
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+        </select>
+        <div class="button-container">
+            <button id="add-task">Add Task</button>
+        </div>
+        <ul id="task-list">
+            <!-- Tasks will be added here -->
+        </ul>
+    </div>    
+
+    <!-- Include SortableJS from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <script>
+        // Function to save tasks to local storage
+        function saveTasks() {
+            const tasks = [];
+            document.querySelectorAll('#task-list li').forEach(li => {
+                tasks.push({
+                    text: li.querySelector('.task-text').textContent.trim(),
+                    createdAt: li.dataset.createdAt,
+                    priority: li.dataset.priority
+                });
+            });
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        // Function to load tasks from local storage
+        function loadTasks() {
+            const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            tasks.forEach(task => {
+                addTask(task.text, task.createdAt, task.priority);
+            });
+        }
+
+        // Function to create a new task item
+        function createTaskElement(taskText, createdAt, priority) {
+            const li = document.createElement('li');
+            li.dataset.createdAt = createdAt;
+            li.dataset.priority = priority;
+            li.style.backgroundColor = priority === 'high' ? '#ffdddd' :
+                                      priority === 'medium' ? '#ffffcc' : '#e0e0e0';
+            
+            const taskSpan = document.createElement('span');
+            taskSpan.className = 'task-text';
+            taskSpan.textContent = taskText;
+
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.addEventListener('click', function() {
+                editTask(taskSpan);
+            });
+
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Remove';
+            removeButton.addEventListener('click', function() {
+                li.remove();
+                saveTasks();
+            });
+
+            li.appendChild(taskSpan);
+            li.appendChild(editButton);
+            li.appendChild(removeButton);
+
+            return li;
+        }
+
+        // Function to add a task to the list
+        function addTask(taskText, createdAt = Date.now(), priority = 'low') {
+            if (taskText.trim() === '') return;
+
+            const li = createTaskElement(taskText, createdAt, priority);
+            document.getElementById('task-list').appendChild(li);
+            saveTasks();
+        }
+
+        // Function to edit a task
+        function editTask(taskSpan) {
+            const currentText = taskSpan.textContent;
+            const newTaskText = prompt('Edit task:', currentText);
+
+            if (newTaskText !== null && newTaskText.trim() !== '') {
+                taskSpan.textContent = newTaskText.trim();
+                saveTasks();
+            }
+        }
+
+        // Function to filter tasks based on search input
+        function filterTasks() {
+            const searchQuery = document.getElementById('search-task').value.toLowerCase();
+            const tasks = document.querySelectorAll('#task-list li');
+            tasks.forEach(task => {
+                const taskText = task.querySelector('.task-text').textContent.toLowerCase();
+                if (taskText.includes(searchQuery)) {
+                    task.style.display = '';
+                } else {
+                    task.style.display = 'none';
+                }
+            });
+        }
+
+        document.getElementById('add-task').addEventListener('click', function() {
+            const taskInput = document.getElementById('new-task');
+            const taskText = taskInput.value.trim();
+            const priority = document.getElementById('task-priority').value;
+            addTask(taskText, Date.now(), priority);
+            taskInput.value = '';
+        });
+
+        document.getElementById('new-task').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('add-task').click();
+            }
+        });
+
+        document.getElementById('search-task').addEventListener('input', filterTasks);
+
+        // Initialize SortableJS for task reordering
+        new Sortable(document.getElementById('task-list'), {
+            animation: 150,
+            onEnd: function() {
+                saveTasks();
+            }
+        });
+
+        // Load tasks on page load
+        loadTasks();
+    </script>
+</body>
+</html>
